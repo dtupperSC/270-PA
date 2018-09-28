@@ -15,11 +15,14 @@
 
 using namespace std;
 
+// all data members may need to become int arrays of size 3 (considering all cases of flags)
 struct Cell {
 	int minHealth;
 	int currHealth;
 	bool dflag;
 	bool pflag;
+	// 0: use no flags 1: use dflag, 2: use pflag 
+	int* useOrNot; 
 };
 
 void printCell(Cell* cell){
@@ -37,11 +40,13 @@ bool inBounds(int index, int N){
 
 // initializes the values of G[0][0]
 void baseCase(Cell*** cellInfo, string originValue){
+	// G[0][0] is a D
 	if (originValue == "D"){
 		cellInfo[0][0]->minHealth = 1; // you need health of at least one (P = cost 0)
 		cellInfo[0][0]->currHealth = 1; 
 		cellInfo[0][0]->dflag = true;
 	}
+	// G[0][0] is a P
 	else if (originValue == "P"){
 		cellInfo[0][0]->minHealth = 1; // you need health of at least one (P = cost 0)
 		cellInfo[0][0]->currHealth = 1; 
@@ -261,6 +266,8 @@ int solve(int N, vector<vector<string> > G) {
 	}
 	delete [] cellInfo;
 
+
+	// CHANGE THIS TO RETURN MIN OF cellInfo[N-1][N-1]->minHealth array
 	return cellInfo[N-1][N-1]->minHealth;
 }
 

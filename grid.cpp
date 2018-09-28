@@ -200,6 +200,7 @@ void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool cal
 		cellInfo[calc_i][calc_j]->minHealth = minHealthIJ;
 		updateCellValues(cellInfo[i][j], cellInfo[calc_i][calc_j], afterAttributes);
 	}
+	delete [] afterAttributes;
 }
 
 int solve(int N, vector<vector<string> > G) {
@@ -251,6 +252,14 @@ int solve(int N, vector<vector<string> > G) {
 		cout << endl;
 	}
 	cout << endl;
+
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			delete cellInfo[i][j];
+		}
+		delete [] cellInfo[i];
+	}
+	delete [] cellInfo;
 
 	return cellInfo[N-1][N-1]->minHealth;
 }

@@ -11,200 +11,237 @@
 #include <string>
 #include <cstdlib>
 #include <climits>
+#include <stdexcept>
 
 using namespace std;
 
-// i: rows, j: cols
-// OUTPUT: the value of minHealth table for i, j
-int calcMinHealth(int maxHP, int squareCost, int i, int j, int** squareHealth, int** minHealth){
-	bool leftOut = false;
-	bool topOut = false;
-	if ((j-1) < 0) leftOut = true;
-	if ((i-1) < 0) topOut = true;
+struct Cell {
+	int minHealth;
+	int currHealth;
+	bool dflag;
+	bool pflag;
+};
 
+void printCell(Cell* cell){
+	cout << "minHealth: " << cell->minHealth << endl;
+	cout << "currHealth: " << cell->currHealth << endl;
+	cout << "dflag: " << cell->dflag << endl;
+	cout << "pflag: " << cell->pflag << endl;
+}
 
-	// squareCost is positive
-	// OR squareCost is negative, but not bigger than maxHP
-	if (squareCost >= 0 || abs(squareCost) < maxHP){
-		// G[0][0] case
-		if (i==0 && j==0) {
-			if (squareCost == 0) return 1;
+// OUTPUT: true = inBounds, false = outOfBounds
+bool inBounds(int index, int N){
+	if (index > (N-1) || index < 0) return false;
+	else return true;
+}
+
+// initializes the values of G[0][0]
+void baseCase(Cell*** cellInfo, string originValue){
+	if (originValue == "D"){
+		cellInfo[0][0]->minHealth = 1; // you need health of at least one (P = cost 0)
+		cellInfo[0][0]->currHealth = 1; 
+		cellInfo[0][0]->dflag = true;
+	}
+	else if (originValue == "P"){
+		cellInfo[0][0]->minHealth = 1; // you need health of at least one (P = cost 0)
+		cellInfo[0][0]->currHealth = 1; 
+		cellInfo[0][0]->pflag = true;
+	}
+	// number
+	else {
+		// G[0][0] is negative or zero
+		if (stoi(originValue) <= 0){
+			cellInfo[0][0]->minHealth = abs(stoi(originValue)) + 1;
+			cellInfo[0][0]->currHealth = 1;
 		}
-		// normal case
-		if (leftOut) return minHealth[i-1][j];
-		else if (topOut) return minHealth[i][j-1];
-		else return ( min(minHealth[i-1][j], minHealth[i][j-1]) );
-	}
-	// squareCost and maxHP cancel
-	else if (abs(squareCost) == maxHP) {
-		if (leftOut) return ( minHealth[i-1][j] + 1 );
-		else if (topOut) return ( minHealth[i][j-1] + 1 );
-		else return ( min(minHealth[i-1][j], minHealth[i][j-1]) + 1 );
-	}
-	// squareCost is larger than maxHP
-	else {
-		if (i==0 && j==0){
-			cout << "Entered the if statement" << endl;
-			return (abs(squareCost) + 1);
+		// pos
+		else {
+			cellInfo[0][0]->minHealth = 0;
+			cellInfo[0][0]->currHealth = stoi(originValue);
 		}
-		if (leftOut) return ( minHealth[i-1][j] + abs(squareCost + maxHP) + 1 );
-		else if (topOut) return ( minHealth[i][j-1] + abs(squareCost + maxHP) + 1 );
-		else return ( min(minHealth[i-1][j], minHealth[i][j-1]) + abs(squareCost + squareHealth[i][j]) + 1 );
 	}
 }
 
-int calcSquareHealth(int maxHP, int squareCost, int i, int j, int** squareHealth){
-	bool leftOut = false;
-	bool topOut = false;
-	if ((j-1) < 0) leftOut = true;
-	if ((i-1) < 0) topOut = true;
-
-	// squareCost is positive
-	// OR squareCost is negative, but not bigger than maxHP
-	if (squareCost >= 0 || abs(squareCost) < maxHP){
-		return (maxHP + squareCost);
+// applies attributes to cost
+int* applyAttributes(Cell* cell, int cost){
+	int* afterAttributes = new int[2];
+	// pos 
+	if (cost > 0){
+		// use D attribute
+		if (cell->dflag) {
+			afterAttributes[0] = cost * 2;
+			afterAttributes[1] = 1;
+		}
+		// use no attributes
+		else {
+			afterAttributes[0] = cost;
+			afterAttributes[1] = 3;
+		}
 	}
-	// squareCost >= maxHP
+	// neg
+	else if (cost < 0){
+		// use P attribute
+		if (cell->pflag) {
+			afterAttributes[0] = 0;
+			afterAttributes[1] = 2;
+		}
+		// use no attributes
+		else {
+			afterAttributes[0] = cost;
+			afterAttributes[1] = 3;
+		}
+	}
 	else {
-		return 1;
+		// use no attributes
+		afterAttributes[0] = cost;
+		afterAttributes[1] = 3;
+	}
+	return afterAttributes;
+}
+
+void updateCellValues(Cell* pred, Cell* curr, int* afterAttributes){
+	// updates dflag data member
+	if (pred->dflag){
+		// checks if doubling was used on curr 
+		if (afterAttributes[1] != 1) curr->dflag = true;
+	}
+	// updates pflag data member
+	if (pred->pflag){
+		// checks if prevent was used on curr
+		if (afterAttributes[1] != 2) curr->pflag = true;
+	}
+	// updates currHealth data member
+	// afterAttributes[0] is square cost
+	// pos
+	if (afterAttributes[0] >= 0){
+		curr->currHealth = afterAttributes[0] + pred->currHealth;
+	}
+	// neg
+	else {
+		// smaller neg than pred->currHealth
+		if (abs(afterAttributes[0]) < pred->currHealth) {
+			curr->currHealth = afterAttributes[0] + pred->currHealth;
+		}
+		// larger neg than pred->currHealth
+		else {
+			curr->currHealth = 1;
+		}
 	}
 }
 
-// OUTPUT: HP for the lowest minHealth needed for a square
-int startHealth(int i, int j, int** squareHealth, int** minHealth){
-	int leftHP, topHP, finalHP;
-	int minHealthLeft, minHealthTop;
-	bool leftOut = false;
-	bool topOut = false;
-	// checks if left of curr square is out of bounds
-	if (j-1 < 0) {
-		leftOut = true;
-		leftHP = 0;
-		minHealthLeft = INT_MAX;
+// calculates & saves the minHealth of G[i][j+1] or G[i+1][j]
+void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool calcRight){
+	// determine if calculating right or down
+	int calc_i, calc_j;
+	if (calcRight) {
+		calc_i = i;
+		calc_j = j + 1;
 	}
-	// left of curr not out of bounds
 	else {
-		leftHP = squareHealth[i][j-1];
-		minHealthLeft = minHealth[i][j-1];
+		calc_i = i + 1;
+		calc_j = j;
 	}
-	// checks if top of curr square is out of bounds
-	if (i-1 < 0) {
-		topOut = true;
-		topHP = 0;
-		minHealthTop = INT_MAX;
-
-	}
-	// top of curr not out of bounds
-	else {
-		topHP = squareHealth[i-1][j];
-		minHealthTop = minHealth[i-1][j];
+	if (i==0 && j==2) {
+		cout << endl;
+		cout << calc_i << ", " << calc_j << endl;
+		cout << "G[calc_i][calc_j] " << G[calc_i][calc_j] << endl;	
 	}
 
-	// left requires less min health
-	if (minHealthLeft < minHealthTop){
-		return leftHP;
+	// calculate the minHealth
+	int minHealthIJ;
+	// used for number case
+	int* afterAttributes;
+	// has double heal attribute
+	if (G[calc_i][calc_j] == "D"){
+		minHealthIJ = 0 + cellInfo[i][j]->minHealth;
+		cellInfo[calc_i][calc_j]->dflag = true;
+		afterAttributes = new int[2];
+		afterAttributes[0] = 0;
+		afterAttributes[1] = 3;
 	}
-	// they're same
-	else if (minHealthLeft == minHealthTop){
-		return (max(leftHP, topHP));
+	// has prevent attribute
+	else if (G[calc_i][calc_j] == "P"){
+		minHealthIJ = 0 + cellInfo[i][j]->minHealth;
+		cellInfo[calc_i][calc_j]->pflag = true;
+		afterAttributes = new int[2];
+		afterAttributes[0] = 0;
+		afterAttributes[1] = 3;
 	}
-	// topHP requires less minHealth
+	// is a number
 	else {
-		return topHP;
+		afterAttributes = applyAttributes(cellInfo[i][j], stoi(G[calc_i][calc_j]));
+		// pos
+		if (afterAttributes[0] > 0){
+			minHealthIJ = 0 + cellInfo[i][j]->minHealth;
+		}
+		// neg
+		else if (afterAttributes[0] < 0){
+			minHealthIJ = (abs(afterAttributes[0] + cellInfo[i][j]->currHealth) + 1);
+		}
+		// 0
+		else {
+			minHealthIJ = 0 + cellInfo[i][j]->minHealth;
+		}
+	}
+	// IF minHealthIJ < current minHealth for cellInfo[i][j+1]
+	// THEN replace minHealth for [i][j+1] and other data members
+	if (minHealthIJ < cellInfo[calc_i][calc_j]->minHealth){
+		cellInfo[calc_i][calc_j]->minHealth = minHealthIJ;
+		updateCellValues(cellInfo[i][j], cellInfo[calc_i][calc_j], afterAttributes);
 	}
 }
-
 
 int solve(int N, vector<vector<string> > G) {
-	// declares squareHealth and minHealth array
-	 int** squareHealth = new int*[N]; // max amount of health when standing on particular square
-	 int** minHealth = new int*[N]; // min amount of health to get to particular square
-	 for (int i=0; i<N; i++){
-		 squareHealth[i] = new int[N];
-		 minHealth[i] = new int[N];
-	 }
-	 // initializes base case
-	 // G[0][0] is positive
-	 if (stoi(G[0][0]) > 0) {
-		 squareHealth[0][0] = stoi(G[0][0]);
-		 minHealth[0][0] = 0;
-	 }
-	 // G[0][0] is negative or zero
-	 else {
-		 squareHealth[0][0] = 1;
-		 minHealth[0][0] = calcMinHealth(0, stoi(G[0][0]), 0, 0, squareHealth, minHealth);
-	 }
-	 // dyanmic programming
-	 for (int i=0; i<N; i++){
-		 for (int j=0; j<N; j++){
-			 // G[0][0] has already been initalized
-			 if (i == 0 && j == 0) continue;
-			 // reached the bottom right case
-			 else if (i == (N-1) && j == (N-1)){
-			 	int health = startHealth(i, j, squareHealth, minHealth);
-			 	squareHealth[i][j] = calcSquareHealth(health, stoi(G[i][j]), i, j, squareHealth);
-			 	minHealth[i][j] = calcMinHealth(health, stoi(G[i][j]), i, j, squareHealth, minHealth);
+	Cell*** cellInfo = new Cell**[N];
+	for (int i=0; i<N; i++){
+		cellInfo[i] = new Cell*[N];
+		for (int j=0; j<N; j++){
+			Cell* newCell = new Cell;
+			newCell->minHealth = INT_MAX;
+			newCell->currHealth = 0;
+			newCell->dflag = false; 
+			newCell->pflag = false;
+			cellInfo[i][j] = newCell;
+		}
+	}
+	// dynamic programming
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			if (i==0 && j==0){
+				baseCase(cellInfo, G[0][0]);
+			}
+			if (inBounds(j+1, N)) calcMin(G, cellInfo, i, j, true);
+			if (inBounds(i+1, N)) calcMin(G, cellInfo, i, j, false);
+		}
+	}
 
+	cout << endl << "minHealth" << endl;
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			cout << cellInfo[i][j]->minHealth << " ";
+		}
+		cout << endl;
+	}
 
+	cout << endl << "health" << endl;
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			cout << cellInfo[i][j]->currHealth << " ";
+		}
+		cout << endl;
+	}
 
-			 	cout << endl << "squareHealth" << endl;
-			 	for (int i=0; i<N; i++){
-	 	for (int j=0; j<N; j++){
-	 		cout << squareHealth[i][j] << " ";
-	 	}
-	 	cout << endl;
-	 }
+	cout << endl << "attributes" << endl;
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			cout << cellInfo[i][j]->pflag; 
+			cout << cellInfo[i][j]->dflag << " ";
+		}
+		cout << endl;
+	}
+	cout << endl;
 
-	 cout << endl << "minHealth" << endl;
-
-	 for (int i=0; i<N; i++){
-	 	for (int j=0; j<N; j++){
-	 		cout << minHealth[i][j] << " ";
-	 	}
-	 	cout << endl;
-	 }
-	 cout << endl;
-
-
-
-
-
-				return minHealth[N-1][N-1];
-			 }
-			 // haven't reached the end yet
-			 else {
-				int health = startHealth(i, j, squareHealth, minHealth);
-				squareHealth[i][j] = calcSquareHealth(health, stoi(G[i][j]), i, j, squareHealth);
-				minHealth[i][j] = calcMinHealth(health, stoi(G[i][j]), i, j, squareHealth, minHealth);
-			 }
-		 }
-	 }
-
-	 for (int i=0; i<N; i++){
-	 	for (int j=0; j<N; j++){
-	 		cout << squareHealth[i][j] << " ";
-	 	}
-	 	cout << endl;
-	 }
-
-	 cout << endl << endl;
-
-	 for (int i=0; i<N; i++){
-	 	for (int j=0; j<N; j++){
-	 		cout << minHealth[i][j] << " ";
-	 	}
-	 	cout << endl;
-	 }
-
-
-	 // frees dynamically allocated memory
-	 for (int i=0; i<N; i++){
-		 delete [] squareHealth[i];
-		 delete [] minHealth[i];
-	 }
-	 delete [] squareHealth;
-	 delete [] minHealth;
-
+	return cellInfo[N-1][N-1]->minHealth;
 }
 
 //	The main function reads the input and outputs your answer.

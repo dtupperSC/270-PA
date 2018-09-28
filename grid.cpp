@@ -141,7 +141,7 @@ void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool cal
 		calc_i = i + 1;
 		calc_j = j;
 	}
-	if (i==0 && j==2) {
+	if (i==0 && j==0) {
 		cout << endl;
 		cout << calc_i << ", " << calc_j << endl;
 		cout << "G[calc_i][calc_j] " << G[calc_i][calc_j] << endl;	
@@ -170,13 +170,23 @@ void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool cal
 	// is a number
 	else {
 		afterAttributes = applyAttributes(cellInfo[i][j], stoi(G[calc_i][calc_j]));
+		if (i==0 && j==0) {
+			cout << "afterAttributes[0] " << afterAttributes[0] << endl;
+			cout << "afterAttributes[1] " << afterAttributes[1] << endl;
+		}
 		// pos
 		if (afterAttributes[0] > 0){
 			minHealthIJ = 0 + cellInfo[i][j]->minHealth;
 		}
 		// neg
 		else if (afterAttributes[0] < 0){
-			minHealthIJ = (abs(afterAttributes[0] + cellInfo[i][j]->currHealth) + 1);
+			// square cost is greater than currHealth
+			if (abs(afterAttributes[0]) >= cellInfo[i][j]->currHealth){
+				if (i==0 && j==0) cout << "Entered negative (1)" << endl;
+				minHealthIJ = (abs(afterAttributes[0] + cellInfo[i][j]->currHealth) + 1 + cellInfo[i][j]->minHealth);
+			}
+			else minHealthIJ = 0 + cellInfo[i][j]->minHealth;
+			
 		}
 		// 0
 		else {
@@ -186,6 +196,7 @@ void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool cal
 	// IF minHealthIJ < current minHealth for cellInfo[i][j+1]
 	// THEN replace minHealth for [i][j+1] and other data members
 	if (minHealthIJ < cellInfo[calc_i][calc_j]->minHealth){
+		if (i==0 && j==0) cout << "Changed that shit" << endl;
 		cellInfo[calc_i][calc_j]->minHealth = minHealthIJ;
 		updateCellValues(cellInfo[i][j], cellInfo[calc_i][calc_j], afterAttributes);
 	}
@@ -234,8 +245,8 @@ int solve(int N, vector<vector<string> > G) {
 	cout << endl << "attributes" << endl;
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
-			cout << cellInfo[i][j]->pflag; 
-			cout << cellInfo[i][j]->dflag << " ";
+			cout << cellInfo[i][j]->dflag; 
+			cout << cellInfo[i][j]->pflag << " ";
 		}
 		cout << endl;
 	}

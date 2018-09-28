@@ -120,7 +120,7 @@ void updateCell_Number(Cell* pred, Cell* curr, int squareCost, int iteration){
 	// positive or zero
 	if (squareCost >= 0){
 		// if new minHealth is smaller than old one
-		if ((0 + p_mH) < curr->minHealth[0]){
+		if ((0 + p_mH) < curr->minHealth[iteration]){
 			curr->minHealth[iteration] = 0 + p_mH;
 			curr->currHealth[iteration] = squareCost + p_cH;
 		}
@@ -130,14 +130,14 @@ void updateCell_Number(Cell* pred, Cell* curr, int squareCost, int iteration){
 		// negative cost is same or greater than health available
 		if (abs(squareCost) >= p_cH){
 			// if new minHealth is smaller than old one
-			if ((abs(squareCost + p_cH) + 1) + p_mH < curr->minHealth[0]){
+			if ((abs(squareCost + p_cH) + 1) + p_mH < curr->minHealth[iteration]){
 				curr->minHealth[iteration] = (abs(squareCost + p_cH) + 1) + p_mH;
 				curr->currHealth[iteration] = 1;
 			}
 		}
 		else {
 			// if new minHealth is smaller than old one
-			if (0 + p_mH < curr->minHealth[0]){
+			if (0 + p_mH < curr->minHealth[iteration]){
 				curr->minHealth[iteration] = 0 + p_mH;
 				curr->currHealth[iteration] = squareCost + p_cH;
 			}

@@ -94,6 +94,7 @@ void updateCell_Number(Cell* pred, Cell* curr, int squareCost, int iteration){
 		p_dflag = pred->dflag[2];
 		p_pflag = pred->pflag[2];
 	}
+	bool usedD, usedP = false;
 	// no attributes used (even if they exist)
 	if (iteration == 0){
 
@@ -102,14 +103,14 @@ void updateCell_Number(Cell* pred, Cell* curr, int squareCost, int iteration){
 		// dflag is available and will be applied
 		if (p_dflag && squareCost > 0){
 			squareCost *= 2;
-			//usedD = true;
+			usedD = true;
 		}
 	}
 	else if (iteration == 2){
 		// pflag is available and will be applied
 		if (p_pflag && squareCost < 0){
 			squareCost = 0;
-			//usedP = true;
+			usedP = true;
 		}
 	}
 
@@ -117,73 +118,75 @@ void updateCell_Number(Cell* pred, Cell* curr, int squareCost, int iteration){
 	// positive or zero
 	if (squareCost >= 0){
 		// if new minHealth is smaller than old one
-		if ((0 + p_mH) < curr->minHealth[iteration]){
+		//if ((0 + p_mH) < curr->minHealth[iteration]){
 			curr->minHealth[iteration] = 0 + p_mH;
 			curr->currHealth[iteration] = squareCost + p_cH;
-		}
+		//}
 	}
 	// negative
 	else {
 		// negative cost is same or greater than health available
 		if (abs(squareCost) >= p_cH){
 			// if new minHealth is smaller than old one
-			if ((abs(squareCost + p_cH) + 1) + p_mH < curr->minHealth[iteration]){
+			//if ((abs(squareCost + p_cH) + 1) + p_mH < curr->minHealth[iteration]){
 				curr->minHealth[iteration] = (abs(squareCost + p_cH) + 1) + p_mH;
 				curr->currHealth[iteration] = 1;
-			}
+			//}
 		}
 		else {
 			// if new minHealth is smaller than old one
-			if (0 + p_mH < curr->minHealth[iteration]){
+			//if (0 + p_mH < curr->minHealth[iteration]){
 				curr->minHealth[iteration] = 0 + p_mH;
 				curr->currHealth[iteration] = squareCost + p_cH;
-			}
+			//}
 		}
 
 	}
 	// set attribute flags
-	curr->dflag[iteration] = p_dflag;
-	curr->pflag[iteration] = p_pflag;
+	if (usedD) curr->dflag[iteration] = false;
+	else curr->dflag[iteration] = p_dflag;
+	if (usedP) curr->pflag[iteration] = false;
+	else curr->pflag[iteration] = p_pflag;
 }
 
 void updateCell_Letter(Cell* pred, Cell* curr, string letter){
-	// minHealth needed to get to square
-	int currMH = min(min(pred->minHealth[0], pred->minHealth[1]), pred->minHealth[2]);
-	// health and flag associaited w/ minHealth
-	int currH; 
-	bool flag;
-	// decides what health value to give it 
-	if (currMH == pred->minHealth[0]) {
-		currH = pred->currHealth[0];
-		// if letter is P we need D's values
-		if (letter == "P") flag = pred->dflag[0];
-		// if letter is D we need P's values
-		else if (letter == "D") flag = pred->pflag[0];
-	}
-	else if (currMH == pred->minHealth[1]) {
-		currH = pred->currHealth[1];
-		if (letter == "P") flag = pred->dflag[1];
-		else if (letter == "D") flag = pred->pflag[1];
-	}
-	else if (currMH == pred->minHealth[2]) {
-		currH = pred->currHealth[2];
-		if (letter == "P") flag = pred->dflag[2];
-		else if (letter == "D") flag = pred->pflag[2];
-	}
-	// sets curr's new attributes (depending on if new mH is smaller or not)
-	for (int i=0; i<3; i++){
-		if (currMH < curr->minHealth[i]){
-			curr->minHealth[i] = currMH;
-			curr->currHealth[i] = currH;
+	for (int l=0; l<3; l++){
+		// minHealth needed to get to square
+		int currMH = pred->minHealth[l];
+		// health and flag associaited w/ minHealth
+		int currH; 
+		bool flag;
+		// decides what health value to give it 
+		if (currMH == pred->minHealth[0]) {
+			currH = pred->currHealth[0];
+			// if letter is P we need D's values
+			if (letter == "P") flag = pred->dflag[0];
+			// if letter is D we need P's values
+			else if (letter == "D") flag = pred->pflag[0];
+		}
+		else if (currMH == pred->minHealth[1]) {
+			currH = pred->currHealth[1];
+			if (letter == "P") flag = pred->dflag[1];
+			else if (letter == "D") flag = pred->pflag[1];
+		}
+		else if (currMH == pred->minHealth[2]) {
+			currH = pred->currHealth[2];
+			if (letter == "P") flag = pred->dflag[2];
+			else if (letter == "D") flag = pred->pflag[2];
+		}
+		// sets curr's new attributes (depending on if new mH is smaller or not)
+		//if (currMH < curr->minHealth[l]){
+			curr->minHealth[l] = currMH;
+			curr->currHealth[l] = currH;
 			if (letter == "D"){
-				curr->dflag[i] = true;
-				curr->pflag[i] = flag;
+				curr->dflag[l] = true;
+				curr->pflag[l] = flag;
 			}
 			else if (letter == "P"){
-				curr->pflag[i] = true;
-				curr->dflag[i] = flag;
+				curr->pflag[l] = true;
+				curr->dflag[l] = flag;
 			}
-		}
+		//}
 	}
 }
 
@@ -270,6 +273,34 @@ int solve(int N, vector<vector<string> > G) {
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
 			cout << cellInfo[i][j]->minHealth[2] << " ";
+		}
+		cout << endl;
+	}
+	cout << endl;
+
+
+
+	cout << endl << "no attributes" << endl;
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			cout << cellInfo[i][j]->currHealth[0] << " ";
+		}
+		cout << endl;
+	}
+	
+	cout << endl << "allows P" << endl;
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			cout << cellInfo[i][j]->currHealth[1] << " ";
+		}
+		cout << endl;
+	}
+	
+
+	cout << endl << "allows D" << endl;
+	for (int i=0; i<N; i++){
+		for (int j=0; j<N; j++){
+			cout << cellInfo[i][j]->currHealth[2] << " ";
 		}
 		cout << endl;
 	}

@@ -99,7 +99,6 @@ void updateCell_Number(Cell* pred, Cell* curr, int calc_i, int calc_j, int N, in
 			usedP = true;
 		}
 	}
-
 	bool changeIt = true;
 	// positive or zero
 	if (squareCost >= 0){
@@ -214,7 +213,6 @@ int solve(int N, vector<vector<string> > G) {
 			cellInfo[i][j] = newCell;
 		}
 	}
-	cout << endl;
 	// dynamic programming
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
@@ -228,12 +226,9 @@ int solve(int N, vector<vector<string> > G) {
 
 	Cell* final = cellInfo[N-1][N-1];
 	int rValue = final->minHealth[0];
-	cout << "Final Considerations" << endl;
 	for (int i=0; i<3; i++){
-		cout << i << ": " << final->minHealth[i] << " ";
 		if (final->minHealth[i] < rValue) rValue = final->minHealth[i];
 	}
-	cout << endl;
 
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){

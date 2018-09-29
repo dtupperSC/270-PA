@@ -17,20 +17,11 @@ using namespace std;
 
 // all data members may need to become int arrays of size 3 (considering all cases of flags)
 struct Cell {
-	int minHealth;
-	int currHealth;
-	bool dflag;
-	bool pflag;
-	// 0: use no flags 1: use dflag, 2: use pflag 
-	int* useOrNot; 
+	int* minHealth;
+	int* currHealth;
+	bool* dflag;
+	bool* pflag;
 };
-
-void printCell(Cell* cell){
-	cout << "minHealth: " << cell->minHealth << endl;
-	cout << "currHealth: " << cell->currHealth << endl;
-	cout << "dflag: " << cell->dflag << endl;
-	cout << "pflag: " << cell->pflag << endl;
-}
 
 // OUTPUT: true = inBounds, false = outOfBounds
 bool inBounds(int index, int N){
@@ -40,96 +31,135 @@ bool inBounds(int index, int N){
 
 // initializes the values of G[0][0]
 void baseCase(Cell*** cellInfo, string originValue){
+	int mH, cH;
+	bool d, p;
 	// G[0][0] is a D
 	if (originValue == "D"){
-		cellInfo[0][0]->minHealth = 1; // you need health of at least one (P = cost 0)
-		cellInfo[0][0]->currHealth = 1; 
-		cellInfo[0][0]->dflag = true;
+		mH = 1; // you need health of at least one (P = cost 0)
+		cH = 1; 
+		d = true;
+		p = false;
 	}
 	// G[0][0] is a P
 	else if (originValue == "P"){
-		cellInfo[0][0]->minHealth = 1; // you need health of at least one (P = cost 0)
-		cellInfo[0][0]->currHealth = 1; 
-		cellInfo[0][0]->pflag = true;
+		mH = 1; // you need health of at least one (P = cost 0)
+		cH = 1; 
+		p = true;
+		d = false;
 	}
 	// number
 	else {
 		// G[0][0] is negative or zero
 		if (stoi(originValue) <= 0){
-			cellInfo[0][0]->minHealth = abs(stoi(originValue)) + 1;
-			cellInfo[0][0]->currHealth = 1;
+			mH = abs(stoi(originValue)) + 1;
+			cH = 1;
+			d = false;
+			p = false;
 		}
 		// pos
 		else {
-			cellInfo[0][0]->minHealth = 0;
-			cellInfo[0][0]->currHealth = stoi(originValue);
+			mH = 0;
+			cH = stoi(originValue);
+			d = false;
+			p = false;
 		}
+	}
+	for (int i=0; i<3; i++){
+		cellInfo[0][0]->minHealth[i] = mH;
+		cellInfo[0][0]->currHealth[i] = cH;
+		cellInfo[0][0]->dflag[i] = d;
+		cellInfo[0][0]->pflag[i] = p;
+	}
+
+}
+
+void updateCell_Number(Cell* pred, Cell* curr, int calc_i, int calc_j, int N, int squareCost, int iteration){
+	int p_mH = pred->minHealth[iteration];
+	// health and flag associaited w/ minHealth (from pred)
+	int p_cH = pred->currHealth[iteration]; 
+	bool p_dflag = pred->dflag[iteration];
+	bool p_pflag = pred->pflag[iteration];
+
+	bool usedD, usedP = false;
+	// no attributes used (even if they exist)
+	if (iteration == 0){
+
+	}
+	else if (iteration == 1){
+		// dflag is available and will be applied
+		if (p_dflag && squareCost > 0){
+			squareCost *= 2;
+			usedD = true;
+		}
+	}
+	else if (iteration == 2){
+		// pflag is available and will be applied
+		if (p_pflag && squareCost < 0){
+			squareCost = 0;
+			usedP = true;
+		}
+	}
+	bool changeIt = true;
+	// positive or zero
+	if (squareCost >= 0){
+		if (0 + p_mH > curr->minHealth[iteration]) changeIt = false;
+		if (changeIt){
+			curr->minHealth[iteration] = 0 + p_mH;
+			curr->currHealth[iteration] = squareCost + p_cH;
+		}
+	}
+	// negative
+	else {
+		// negative cost is same or greater than health available
+		if (abs(squareCost) >= p_cH){
+			if ((abs(squareCost + p_cH) + 1) + p_mH > curr->minHealth[iteration]) changeIt = false;
+			if (changeIt){
+				curr->minHealth[iteration] = (abs(squareCost + p_cH) + 1) + p_mH;
+				curr->currHealth[iteration] = 1;
+			}
+		}
+		else {
+			if (0 + p_mH > curr->minHealth[iteration]) changeIt = false;
+			if (changeIt){
+				curr->minHealth[iteration] = 0 + p_mH;
+				curr->currHealth[iteration] = squareCost + p_cH;
+			}
+		}
+
+	}
+	// set attribute flags
+	if (changeIt) {
+		if (usedD) curr->dflag[iteration] = false;
+		else curr->dflag[iteration] = p_dflag;
+		if (usedP) curr->pflag[iteration] = false;
+		else curr->pflag[iteration] = p_pflag;
 	}
 }
 
-// applies attributes to cost
-int* applyAttributes(Cell* cell, int cost){
-	int* afterAttributes = new int[2];
-	// pos 
-	if (cost > 0){
-		// use D attribute
-		if (cell->dflag) {
-			afterAttributes[0] = cost * 2;
-			afterAttributes[1] = 1;
-		}
-		// use no attributes
-		else {
-			afterAttributes[0] = cost;
-			afterAttributes[1] = 3;
-		}
-	}
-	// neg
-	else if (cost < 0){
-		// use P attribute
-		if (cell->pflag) {
-			afterAttributes[0] = 0;
-			afterAttributes[1] = 2;
-		}
-		// use no attributes
-		else {
-			afterAttributes[0] = cost;
-			afterAttributes[1] = 3;
-		}
-	}
-	else {
-		// use no attributes
-		afterAttributes[0] = cost;
-		afterAttributes[1] = 3;
-	}
-	return afterAttributes;
-}
+void updateCell_Letter(Cell* pred, Cell* curr, string letter){
+	for (int l=0; l<3; l++){
+		// minHealth needed to get to square
+		int currMH = pred->minHealth[l];
+		// health and flag associaited w/ minHealth
+		int currH = pred->currHealth[l];
+		bool flag;
+		// if letter is P we need D's values
+		if (letter == "P") flag = pred->dflag[l];
+		// if letter is D we need P's values
+		else if (letter == "D") flag = pred->pflag[l];
 
-void updateCellValues(Cell* pred, Cell* curr, int* afterAttributes){
-	// updates dflag data member
-	if (pred->dflag){
-		// checks if doubling was used on curr 
-		if (afterAttributes[1] != 1) curr->dflag = true;
-	}
-	// updates pflag data member
-	if (pred->pflag){
-		// checks if prevent was used on curr
-		if (afterAttributes[1] != 2) curr->pflag = true;
-	}
-	// updates currHealth data member
-	// afterAttributes[0] is square cost
-	// pos
-	if (afterAttributes[0] >= 0){
-		curr->currHealth = afterAttributes[0] + pred->currHealth;
-	}
-	// neg
-	else {
-		// smaller neg than pred->currHealth
-		if (abs(afterAttributes[0]) < pred->currHealth) {
-			curr->currHealth = afterAttributes[0] + pred->currHealth;
-		}
-		// larger neg than pred->currHealth
-		else {
-			curr->currHealth = 1;
+		if (currMH < curr->minHealth[l]){
+			curr->minHealth[l] = currMH;
+			curr->currHealth[l] = currH;
+			if (letter == "D"){
+				curr->dflag[l] = true;
+				curr->pflag[l] = flag;
+			}
+			else if (letter == "P"){
+				curr->pflag[l] = true;
+				curr->dflag[l] = flag;
+			}
+
 		}
 	}
 }
@@ -146,66 +176,22 @@ void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool cal
 		calc_i = i + 1;
 		calc_j = j;
 	}
-	if (i==0 && j==0) {
-		cout << endl;
-		cout << calc_i << ", " << calc_j << endl;
-		cout << "G[calc_i][calc_j] " << G[calc_i][calc_j] << endl;	
-	}
-
-	// calculate the minHealth
-	int minHealthIJ;
-	// used for number case
-	int* afterAttributes;
 	// has double heal attribute
 	if (G[calc_i][calc_j] == "D"){
-		minHealthIJ = 0 + cellInfo[i][j]->minHealth;
-		cellInfo[calc_i][calc_j]->dflag = true;
-		afterAttributes = new int[2];
-		afterAttributes[0] = 0;
-		afterAttributes[1] = 3;
+		updateCell_Letter(cellInfo[i][j], cellInfo[calc_i][calc_j], "D");
 	}
 	// has prevent attribute
 	else if (G[calc_i][calc_j] == "P"){
-		minHealthIJ = 0 + cellInfo[i][j]->minHealth;
-		cellInfo[calc_i][calc_j]->pflag = true;
-		afterAttributes = new int[2];
-		afterAttributes[0] = 0;
-		afterAttributes[1] = 3;
+		updateCell_Letter(cellInfo[i][j], cellInfo[calc_i][calc_j], "P");
 	}
 	// is a number
 	else {
-		afterAttributes = applyAttributes(cellInfo[i][j], stoi(G[calc_i][calc_j]));
-		if (i==0 && j==0) {
-			cout << "afterAttributes[0] " << afterAttributes[0] << endl;
-			cout << "afterAttributes[1] " << afterAttributes[1] << endl;
-		}
-		// pos
-		if (afterAttributes[0] > 0){
-			minHealthIJ = 0 + cellInfo[i][j]->minHealth;
-		}
-		// neg
-		else if (afterAttributes[0] < 0){
-			// square cost is greater than currHealth
-			if (abs(afterAttributes[0]) >= cellInfo[i][j]->currHealth){
-				if (i==0 && j==0) cout << "Entered negative (1)" << endl;
-				minHealthIJ = (abs(afterAttributes[0] + cellInfo[i][j]->currHealth) + 1 + cellInfo[i][j]->minHealth);
-			}
-			else minHealthIJ = 0 + cellInfo[i][j]->minHealth;
-			
-		}
-		// 0
-		else {
-			minHealthIJ = 0 + cellInfo[i][j]->minHealth;
+		// iterates through three possible scenarios 
+		// 1: don't use attributes, 2: P available, 3: D available
+		for (int k=0; k<3; k++){
+			updateCell_Number(cellInfo[i][j], cellInfo[calc_i][calc_j], calc_i, calc_j, G[0].size(), stoi(G[calc_i][calc_j]), k);
 		}
 	}
-	// IF minHealthIJ < current minHealth for cellInfo[i][j+1]
-	// THEN replace minHealth for [i][j+1] and other data members
-	if (minHealthIJ < cellInfo[calc_i][calc_j]->minHealth){
-		if (i==0 && j==0) cout << "Changed that shit" << endl;
-		cellInfo[calc_i][calc_j]->minHealth = minHealthIJ;
-		updateCellValues(cellInfo[i][j], cellInfo[calc_i][calc_j], afterAttributes);
-	}
-	delete [] afterAttributes;
 }
 
 int solve(int N, vector<vector<string> > G) {
@@ -214,10 +200,16 @@ int solve(int N, vector<vector<string> > G) {
 		cellInfo[i] = new Cell*[N];
 		for (int j=0; j<N; j++){
 			Cell* newCell = new Cell;
-			newCell->minHealth = INT_MAX;
-			newCell->currHealth = 0;
-			newCell->dflag = false; 
-			newCell->pflag = false;
+			newCell->minHealth = new int[3];
+			newCell->currHealth = new int[3];
+			newCell->dflag = new bool[3];
+			newCell->pflag = new bool[3];
+			for (int k=0; k<3; k++){
+				newCell->minHealth[k] = INT_MAX;
+				newCell->currHealth[k] = 0;
+				newCell->dflag[k] = false; 
+				newCell->pflag[k] = false;
+			}
 			cellInfo[i][j] = newCell;
 		}
 	}
@@ -232,43 +224,24 @@ int solve(int N, vector<vector<string> > G) {
 		}
 	}
 
-	cout << endl << "minHealth" << endl;
-	for (int i=0; i<N; i++){
-		for (int j=0; j<N; j++){
-			cout << cellInfo[i][j]->minHealth << " ";
-		}
-		cout << endl;
+	Cell* final = cellInfo[N-1][N-1];
+	int rValue = final->minHealth[0];
+	for (int i=0; i<3; i++){
+		if (final->minHealth[i] < rValue) rValue = final->minHealth[i];
 	}
 
-	cout << endl << "health" << endl;
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
-			cout << cellInfo[i][j]->currHealth << " ";
-		}
-		cout << endl;
-	}
-
-	cout << endl << "attributes" << endl;
-	for (int i=0; i<N; i++){
-		for (int j=0; j<N; j++){
-			cout << cellInfo[i][j]->dflag; 
-			cout << cellInfo[i][j]->pflag << " ";
-		}
-		cout << endl;
-	}
-	cout << endl;
-
-	for (int i=0; i<N; i++){
-		for (int j=0; j<N; j++){
+			delete [] cellInfo[i][j]->minHealth;
+			delete [] cellInfo[i][j]->currHealth;
+			delete [] cellInfo[i][j]->dflag;
+			delete [] cellInfo[i][j]->pflag;
 			delete cellInfo[i][j];
 		}
 		delete [] cellInfo[i];
 	}
-	delete [] cellInfo;
-
-
-	// CHANGE THIS TO RETURN MIN OF cellInfo[N-1][N-1]->minHealth array
-	return cellInfo[N-1][N-1]->minHealth;
+	delete [] cellInfo;	
+	return rValue;
 }
 
 //	The main function reads the input and outputs your answer.

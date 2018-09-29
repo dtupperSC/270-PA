@@ -94,29 +94,26 @@ void updateCell_Number(Cell* pred, Cell* curr, int squareCost, int iteration){
 		p_dflag = pred->dflag[2];
 		p_pflag = pred->pflag[2];
 	}
-	bool usedD, usedP = false;
 	// no attributes used (even if they exist)
 	if (iteration == 0){
-		// neither squareCost nor attributes need to be modified	
+
 	}
-	// allows use of D
 	else if (iteration == 1){
 		// dflag is available and will be applied
-		if (p_dflag || squareCost > 0){
+		if (p_dflag && squareCost > 0){
 			squareCost *= 2;
-			usedD = true;
+			//usedD = true;
 		}
 	}
-	// allows use of P
 	else if (iteration == 2){
 		// pflag is available and will be applied
-		if (p_pflag || squareCost < 0){
+		if (p_pflag && squareCost < 0){
 			squareCost = 0;
-			usedP = true;
+			//usedP = true;
 		}
 	}
 
-	// CALCULATES FINAL INFORMATION
+
 	// positive or zero
 	if (squareCost >= 0){
 		// if new minHealth is smaller than old one
@@ -142,12 +139,11 @@ void updateCell_Number(Cell* pred, Cell* curr, int squareCost, int iteration){
 				curr->currHealth[iteration] = squareCost + p_cH;
 			}
 		}
+
 	}
 	// set attribute flags
-	if (usedD) curr->dflag[iteration] = false;
-	else curr->dflag[iteration] = p_dflag;
-	if (usedP) curr->pflag[iteration] = false;
-	else curr->pflag[iteration] = p_pflag;
+	curr->dflag[iteration] = p_dflag;
+	curr->pflag[iteration] = p_pflag;
 }
 
 void updateCell_Letter(Cell* pred, Cell* curr, string letter){
@@ -205,7 +201,8 @@ void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool cal
 	}
 	// has double heal attribute
 	if (G[calc_i][calc_j] == "D"){
-		updateCell_Letter(cellInfo[i][j], cellInfo[calc_j][calc_j], "D");
+		if (i==0 && j==1) cout << "i: 0 j: 1 " << "G: " << G[calc_i][calc_j] << endl;
+		updateCell_Letter(cellInfo[i][j], cellInfo[calc_i][calc_j], "D");
 	}
 	// has prevent attribute
 	else if (G[calc_i][calc_j] == "P"){
@@ -214,7 +211,7 @@ void calcMin(vector<vector<string> > G, Cell*** cellInfo, int i, int j, bool cal
 	// is a number
 	else {
 		// iterates through three possible scenarios 
-		// 1: don't use attributes, 2: D available, 3: P available
+		// 1: don't use attributes, 2: P available, 3: D available
 		for (int k=0; k<3; k++){
 			updateCell_Number(cellInfo[i][j], cellInfo[calc_i][calc_j], stoi(G[calc_i][calc_j]), k);
 		}
@@ -240,6 +237,7 @@ int solve(int N, vector<vector<string> > G) {
 			cellInfo[i][j] = newCell;
 		}
 	}
+	cout << endl;
 	// dynamic programming
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
@@ -251,23 +249,24 @@ int solve(int N, vector<vector<string> > G) {
 		}
 	}
 
-	cout << endl;
+	cout << endl << "no attributes" << endl;
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
 			cout << cellInfo[i][j]->minHealth[0] << " ";
 		}
 		cout << endl;
 	}
-	cout << endl;
-
+	
+	cout << endl << "allows P" << endl;
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
 			cout << cellInfo[i][j]->minHealth[1] << " ";
 		}
 		cout << endl;
 	}
-	cout << endl;
+	
 
+	cout << endl << "allows D" << endl;
 	for (int i=0; i<N; i++){
 		for (int j=0; j<N; j++){
 			cout << cellInfo[i][j]->minHealth[2] << " ";
